@@ -29,6 +29,8 @@ namespace exchange_flagged_histogram
                 var configuration = new ConfigurationBuilder()
                     .AddJsonFile(config.Value.FullName, true)
                     .Build();
+                var credentials = configuration.GetSection("credentials");
+                Console.WriteLine($"{credentials["username"]} / {credentials["password"]}");
             }
             catch (CLP.Exceptions.CommandLineException e)
             {
