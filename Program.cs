@@ -42,16 +42,34 @@ namespace exchange_flagged_histogram
         {
             var service = new ExchangeService(ExchangeVersion.Exchange2013);
 
-            LogIn(config, service);
+            LogIn(config.GetSection("credentials"), service);
+
+            Histogram(config.GetSection("histogram"), service);
+        }
+
+        private static void LogIn(IConfigurationSection config, ExchangeService service)
+        {
+            service.Credentials = new WebCredentials(config["username"], config["password"]);
+            service.AutodiscoverUrl(config["email"], redirectionUri =>
+                new Uri(redirectionUri).Scheme == "https"
+            );
+        }
+
+        private static void Histogram(IConfigurationSection config, ExchangeService service)
+        {
+            var categories = new List<char>(4);
+            if (config["includeFlaggedOld"] == "true" || config["includeFlaggedOld"] == null)
+                categories.Add('#');
+            if (config["includeFlaggedNew"] == "true" || config["includeFlaggedNew"] == null)
+                categories.Add('+');
+            if (config["includeCompletedNew"] == "true" || config["includeCompletedNew"] == null)
+                categories.Add('-');
+            if (config["includeCompletedOld"] == "true" || config["includeCompletedOld"] == null)
+                categories.Add('.');
 
             // Calculate the age of each not-completed and completed message.
             var now = DateTime.Now;
-            var histogram = new Histogram(new[] {
-                '#',
-                '+',
-                '-',
-                '.',
-            });
+            var histogram = new Histogram(categories.ToArray());
             var countFlagged = 0;
             var countNewFlagged = 0;
             var countNewComplete = 0;
@@ -66,16 +84,16 @@ namespace exchange_flagged_histogram
                         if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
                         {
                             if ((now - message.DateTimeReceived).TotalDays >= 7)
-                                histogram.Add(0, messageAge);
+                                histogram.Add('#', messageAge);
                             else
-                                histogram.Add(1, messageAge);
+                                histogram.Add('+', messageAge);
                         }
                         else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
                         {
                             if ((now - message.Flag.CompleteDate).TotalDays < 7)
-                                histogram.Add(2, messageAge);
+                                histogram.Add('-', messageAge);
                             else
-                                histogram.Add(3, messageAge);
+                                histogram.Add('.', messageAge);
                         }
                     }
 
@@ -100,15 +118,6 @@ namespace exchange_flagged_histogram
             });
 
             Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged} -{countNewComplete} => {countNewFlagged - countNewComplete:+#;-#;0} )");
-        }
-
-        private static void LogIn(IConfigurationRoot config, ExchangeService service)
-        {
-            var credentials = config.GetSection("credentials");
-            service.Credentials = new WebCredentials(credentials["username"], credentials["password"]);
-            service.AutodiscoverUrl(credentials["email"], redirectionUri =>
-                new Uri(redirectionUri).Scheme == "https"
-            );
         }
 
         private static void FindFlaggedMessages(ExchangeService service, Action<Item> onMessage)
