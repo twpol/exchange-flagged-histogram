@@ -58,13 +58,13 @@ namespace exchange_flagged_histogram
         private static void Histogram(IConfigurationSection config, ExchangeService service)
         {
             var categories = new List<char>(4);
-            if (config["includeFlaggedOld"] == "true" || config["includeFlaggedOld"] == null)
+            if ((config["includeFlaggedOld"] ?? "true") == "true")
                 categories.Add('#');
-            if (config["includeFlaggedNew"] == "true" || config["includeFlaggedNew"] == null)
+            if ((config["includeFlaggedNew"] ?? "true") == "true")
                 categories.Add('+');
-            if (config["includeCompletedNew"] == "true" || config["includeCompletedNew"] == null)
+            if ((config["includeCompletedNew"] ?? "true") == "true")
                 categories.Add('-');
-            if (config["includeCompletedOld"] == "true" || config["includeCompletedOld"] == null)
+            if ((config["includeCompletedOld"] ?? "true") == "true")
                 categories.Add('.');
 
             // Calculate the age of each not-completed and completed message.
