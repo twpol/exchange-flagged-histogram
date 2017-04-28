@@ -26,7 +26,6 @@ namespace exchange_flagged_histogram
             try
             {
                 commandLineParser.ParseCommandLine(args);
-                commandLineParser.ShowParsedArguments();
 
                 Main(new ConfigurationBuilder()
                     .AddJsonFile(config.Value.FullName, true)
