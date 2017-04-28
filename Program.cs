@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using CLP = CommandLineParser;
+using Microsoft.Exchange.WebServices.Data;
 using Microsoft.Extensions.Configuration;
 
 namespace exchange_flagged_histogram
@@ -26,16 +27,28 @@ namespace exchange_flagged_histogram
                 commandLineParser.ParseCommandLine(args);
                 commandLineParser.ShowParsedArguments();
 
-                var configuration = new ConfigurationBuilder()
+                Main(new ConfigurationBuilder()
                     .AddJsonFile(config.Value.FullName, true)
-                    .Build();
-                var credentials = configuration.GetSection("credentials");
-                Console.WriteLine($"{credentials["username"]} / {credentials["password"]}");
+                    .Build());
             }
             catch (CLP.Exceptions.CommandLineException e)
             {
                 Console.WriteLine(e.Message);
             }
+        }
+
+        static void Main(IConfigurationRoot config)
+        {
+            var service = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
+
+            var credentials = config.GetSection("credentials");
+            service.Credentials = new WebCredentials(credentials["username"], credentials["password"]);
+            service.AutodiscoverUrl(credentials["email"], ValidateHTTPSUri);
+        }
+
+        static bool ValidateHTTPSUri(string redirectionUri)
+        {
+            return new Uri(redirectionUri).Scheme == "https";
         }
     }
 }
