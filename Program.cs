@@ -6,7 +6,20 @@ namespace exchange_flagged_histogram
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            var commandLineParser = new CommandLineParser.CommandLineParser()
+            {
+                Arguments = {
+                }
+            };
+            try
+            {
+                commandLineParser.ParseCommandLine(args);
+                commandLineParser.ShowParsedArguments();
+            }
+            catch (CommandLineParser.Exceptions.CommandLineException e)
+            {
+                Console.WriteLine(e.Message);
+            }
         }
     }
 }

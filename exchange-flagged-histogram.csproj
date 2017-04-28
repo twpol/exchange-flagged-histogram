@@ -4,6 +4,7 @@
     <TargetFramework>net46</TargetFramework>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net46'">
+    <PackageReference Include="CommandLineArgumentsParser" Version="3.0.10" />
     <PackageReference Include="Microsoft.Exchange.WebServices" Version="2.2" />
   </ItemGroup>
 </Project>
