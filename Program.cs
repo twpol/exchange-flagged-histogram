@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using CLP = CommandLineParser;
 using Microsoft.Exchange.WebServices.Data;
@@ -39,16 +40,113 @@ namespace exchange_flagged_histogram
 
         static void Main(IConfigurationRoot config)
         {
-            var service = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
+            var service = new ExchangeService(ExchangeVersion.Exchange2013);
 
-            var credentials = config.GetSection("credentials");
-            service.Credentials = new WebCredentials(credentials["username"], credentials["password"]);
-            service.AutodiscoverUrl(credentials["email"], ValidateHTTPSUri);
+            LogIn(config, service);
+
+            // Calculate the age of each not-completed and completed message.
+            var now = DateTime.Now;
+            var histogram = new Histogram(new[] {
+                '#',
+                '+',
+                '-',
+                '.',
+            });
+            var countFlagged = 0;
+            var countNewFlagged = 0;
+            var countNewComplete = 0;
+
+            FindFlaggedMessages(service, message =>
+            {
+                try
+                {
+                    if (message.Flag.DueDate.Year > 1 || message.Flag.CompleteDate.Year > 1)
+                    {
+                        var messageAge = (now - message.DateTimeReceived).TotalDays / 7;
+                        if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
+                        {
+                            if ((now - message.DateTimeReceived).TotalDays >= 7)
+                                histogram.Add(0, messageAge);
+                            else
+                                histogram.Add(1, messageAge);
+                        }
+                        else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
+                        {
+                            if ((now - message.Flag.CompleteDate).TotalDays < 7)
+                                histogram.Add(2, messageAge);
+                            else
+                                histogram.Add(3, messageAge);
+                        }
+                    }
+
+                    if (message.Flag.FlagStatus == ItemFlagStatus.Flagged || message.Flag.FlagStatus == ItemFlagStatus.Complete)
+                    {
+                        if ((now - message.DateTimeReceived).TotalDays < 7)
+                            countNewFlagged++;
+                    }
+                    if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
+                    {
+                        countFlagged++;
+                    }
+                    else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
+                    {
+                        if ((now - message.Flag.CompleteDate).TotalDays < 7)
+                            countNewComplete++;
+                    }
+                }
+                catch (ServiceObjectPropertyException)
+                {
+                }
+            });
+
+            Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged} -{countNewComplete} => {countNewFlagged - countNewComplete:+#;-#;0} )");
         }
 
-        static bool ValidateHTTPSUri(string redirectionUri)
+        private static void LogIn(IConfigurationRoot config, ExchangeService service)
         {
-            return new Uri(redirectionUri).Scheme == "https";
+            var credentials = config.GetSection("credentials");
+            service.Credentials = new WebCredentials(credentials["username"], credentials["password"]);
+            service.AutodiscoverUrl(credentials["email"], redirectionUri =>
+                new Uri(redirectionUri).Scheme == "https"
+            );
+        }
+
+        private static void FindFlaggedMessages(ExchangeService service, Action<Item> onMessage)
+        {
+            var PidTagFolderType = new ExtendedPropertyDefinition(0x3601, MapiPropertyType.Integer);
+            var PidTagFlagStatus = new ExtendedPropertyDefinition(0x1090, MapiPropertyType.Integer);
+
+            // Find Outlook's own search folder "AllItems", which includes all folders in the account.
+            var allItemsView = new FolderView(10);
+            var allItems = service.FindFolders(WellKnownFolderName.Root,
+                new SearchFilter.SearchFilterCollection(LogicalOperator.And) {
+                    new SearchFilter.IsEqualTo(PidTagFolderType, "2"),
+                    new SearchFilter.IsEqualTo(FolderSchema.DisplayName, "AllItems"),
+                }, allItemsView);
+
+            if (allItems.Folders.Count != 1)
+            {
+                throw new MissingMemberException("AllItems");
+            }
+
+            // Find all items that are flagged.
+            var flaggedFilter = new SearchFilter.Exists(PidTagFlagStatus);
+            var flaggedView = new ItemView(1000)
+            {
+                PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.DateTimeReceived, ItemSchema.Flag),
+                Traversal = ItemTraversal.Shallow,
+            };
+
+            FindItemsResults<Item> flagged;
+            do
+            {
+                flagged = allItems.Folders[0].FindItems(flaggedFilter, flaggedView);
+                foreach (var item in flagged.Items)
+                {
+                    onMessage(item);
+                }
+                flaggedView.Offset = flagged.NextPageOffset ?? 0;
+            } while (flagged.MoreAvailable);
         }
     }
 }
