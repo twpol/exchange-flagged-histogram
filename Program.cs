@@ -69,7 +69,7 @@ namespace exchange_flagged_histogram
 
             // Calculate the age of each not-completed and completed message.
             var now = DateTime.Now;
-            var histogram = new Histogram(categories.ToArray());
+            var histogram = new Histogram(categories);
             var countFlagged = 0;
             var countNewFlagged = 0;
             var countNewComplete = 0;
@@ -118,6 +118,37 @@ namespace exchange_flagged_histogram
             });
 
             Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged} -{countNewComplete} => {countNewFlagged - countNewComplete:+#;-#;0} )");
+
+            var countCategories = new List<char>(4);
+            if ((config["countFlaggedOld"] ?? "true") == "true")
+                countCategories.Add('#');
+            if ((config["countFlaggedNew"] ?? "true") == "true")
+                countCategories.Add('+');
+            if ((config["countCompletedNew"] ?? "false") == "true")
+                countCategories.Add('-');
+            if ((config["countCompletedOld"] ?? "false") == "true")
+                countCategories.Add('.');
+
+            var output = new HistogramOutput()
+            {
+                BinSize = int.Parse(config["binSize"] ?? "0"),
+                Width = int.Parse(config["width"] ?? "0") - 16,
+                Height = int.Parse(config["height"] ?? "0"),
+            };
+
+            histogram.RenderTo(output, countCategories);
+
+            Console.WriteLine("Weeks   | Flg | Flagged #/+  Complete -/.");
+            for (var i = 0; i < output.Graph.Length; i++)
+            {
+                // Everything before {3} comes to 16 characters, the adjustment used above.
+                Console.WriteLine("{0,3}-{1,3} | {2,3} | {3}",
+                    output.Base + output.BinSize * i,
+                    output.Base + output.BinSize * (i + 1) - 1,
+                    output.Values[i],
+                    output.Graph[i]
+                );
+            }
         }
 
         private static void FindFlaggedMessages(ExchangeService service, Action<Item> onMessage)
