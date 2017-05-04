@@ -134,6 +134,10 @@ namespace exchange_flagged_histogram
                 Width = int.Parse(config["width"] ?? "0") - 16,
                 Height = int.Parse(config["height"] ?? "0"),
             };
+            if (config["minScale"] != null)
+                output.MinScale = double.Parse(config["minScale"]);
+            if (config["maxScale"] != null)
+                output.MaxScale = double.Parse(config["maxScale"]);
 
             histogram.RenderTo(output, countCategories);
 

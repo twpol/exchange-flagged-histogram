@@ -74,7 +74,7 @@ namespace exchange_flagged_histogram
                 }
             }
 
-            output.Scale = (double)output.Width / maximumCount;
+            output.Scale = Math.Max(Math.Min((double)output.Width / maximumCount, output.MaxScale), output.MinScale);
             output.Values = new int[output.Height];
             output.Graph = new string[output.Height];
 
@@ -102,6 +102,8 @@ namespace exchange_flagged_histogram
     {
         public int Base;
         public int BinSize;
+        public double MinScale = double.MinValue;
+        public double MaxScale = double.MaxValue;
         public double Scale;
         public int Width;
         public int Height;
