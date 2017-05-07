@@ -31,7 +31,8 @@ namespace exchange_flagged_histogram
 
             var valueCategoryIndexes = valueCategories
                 .Select(valueCategory => Categories
-                    .FindIndex(category => category == valueCategory));
+                    .FindIndex(category => category == valueCategory))
+                .Where(category => category >= 0);
 
             var minimum = double.MaxValue;
             var maximum = double.MinValue;

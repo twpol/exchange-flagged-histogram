@@ -57,13 +57,13 @@ namespace exchange_flagged_histogram
         private static void Histogram(IConfigurationSection config, ExchangeService service)
         {
             var categories = new List<char>(4);
-            if ((config["includeFlaggedOld"] ?? "true") == "true")
+            if ((config["includeFlaggedOld"] ?? "True") == "True")
                 categories.Add('#');
-            if ((config["includeFlaggedNew"] ?? "true") == "true")
+            if ((config["includeFlaggedNew"] ?? "True") == "True")
                 categories.Add('+');
-            if ((config["includeCompletedNew"] ?? "true") == "true")
+            if ((config["includeCompletedNew"] ?? "True") == "True")
                 categories.Add('-');
-            if ((config["includeCompletedOld"] ?? "true") == "true")
+            if ((config["includeCompletedOld"] ?? "True") == "True")
                 categories.Add('.');
 
             // Calculate the age of each not-completed and completed message.
@@ -77,28 +77,29 @@ namespace exchange_flagged_histogram
             {
                 try
                 {
+                    var messageAge = (now - message.DateTimeReceived).TotalDays;
+                    var completedAge = (now - message.Flag.CompleteDate).TotalDays;
                     if (message.Flag.DueDate.Year > 1 || message.Flag.CompleteDate.Year > 1)
                     {
-                        var messageAge = (now - message.DateTimeReceived).TotalDays / 7;
                         if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
                         {
-                            if ((now - message.DateTimeReceived).TotalDays >= 7)
-                                histogram.Add('#', messageAge);
+                            if (messageAge >= 7)
+                                histogram.Add('#', messageAge / 7);
                             else
-                                histogram.Add('+', messageAge);
+                                histogram.Add('+', messageAge / 7);
                         }
                         else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
                         {
-                            if ((now - message.Flag.CompleteDate).TotalDays < 7)
-                                histogram.Add('-', messageAge);
+                            if (completedAge < 7)
+                                histogram.Add('-', messageAge / 7);
                             else
-                                histogram.Add('.', messageAge);
+                                histogram.Add('.', messageAge / 7);
                         }
                     }
 
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged || message.Flag.FlagStatus == ItemFlagStatus.Complete)
                     {
-                        if ((now - message.DateTimeReceived).TotalDays < 7)
+                        if (messageAge < 7)
                             countNewFlagged++;
                     }
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
@@ -107,7 +108,7 @@ namespace exchange_flagged_histogram
                     }
                     else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
                     {
-                        if ((now - message.Flag.CompleteDate).TotalDays < 7)
+                        if (completedAge < 7)
                             countNewComplete++;
                     }
                 }
@@ -119,13 +120,13 @@ namespace exchange_flagged_histogram
             Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged} -{countNewComplete} => {countNewFlagged - countNewComplete:+#;-#;0} )");
 
             var countCategories = new List<char>(4);
-            if ((config["countFlaggedOld"] ?? "true") == "true")
+            if ((config["countFlaggedOld"] ?? "True") == "True")
                 countCategories.Add('#');
-            if ((config["countFlaggedNew"] ?? "true") == "true")
+            if ((config["countFlaggedNew"] ?? "True") == "True")
                 countCategories.Add('+');
-            if ((config["countCompletedNew"] ?? "false") == "true")
+            if ((config["countCompletedNew"] ?? "False") == "True")
                 countCategories.Add('-');
-            if ((config["countCompletedOld"] ?? "false") == "true")
+            if ((config["countCompletedOld"] ?? "False") == "True")
                 countCategories.Add('.');
 
             var output = new HistogramOutput()
