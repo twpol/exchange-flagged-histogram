@@ -69,6 +69,7 @@ namespace exchange_flagged_histogram
             // Calculate the age of each not-completed and completed message.
             var now = DateTime.Now;
             var histogram = new Histogram(categories);
+            var separateFlaggedCompleted = (config["separateFlaggedCompleted"] ?? "False") == "True";
             var countFlagged = 0;
             var countNewFlagged = 0;
             var countNewComplete = 0;
@@ -79,22 +80,27 @@ namespace exchange_flagged_histogram
                 {
                     var messageAge = (now - message.DateTimeReceived).TotalDays;
                     var completedAge = (now - message.Flag.CompleteDate).TotalDays;
-                    if (message.Flag.DueDate.Year > 1 || message.Flag.CompleteDate.Year > 1)
+
+                    if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
                     {
-                        if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
+                        if (messageAge >= 7)
+                            histogram.Add('#', messageAge / 7);
+                        else
+                            histogram.Add('+', messageAge / 7);
+                    }
+                    else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
+                    {
+                        if (separateFlaggedCompleted)
                         {
                             if (messageAge >= 7)
                                 histogram.Add('#', messageAge / 7);
                             else
                                 histogram.Add('+', messageAge / 7);
                         }
-                        else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
-                        {
-                            if (completedAge < 7)
-                                histogram.Add('-', messageAge / 7);
-                            else
-                                histogram.Add('.', messageAge / 7);
-                        }
+                        if (completedAge < 7)
+                            histogram.Add('-', (separateFlaggedCompleted ? completedAge : messageAge) / 7);
+                        else
+                            histogram.Add('.', (separateFlaggedCompleted ? completedAge : messageAge) / 7);
                     }
 
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged || message.Flag.FlagStatus == ItemFlagStatus.Complete)
