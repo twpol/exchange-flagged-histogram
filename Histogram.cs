@@ -23,13 +23,18 @@ namespace exchange_flagged_histogram
                 values.Add(value);
         }
 
-        public void RenderTo(HistogramOutput output, List<char> valueCategories)
+        public void RenderTo(HistogramOutput output, List<char> valueCategories, List<char> valueNegCategories)
         {
             var valuesByIndex = Categories
                 .Select(category => Values[category])
                 .ToList();
 
             var valueCategoryIndexes = valueCategories
+                .Select(valueCategory => Categories
+                    .FindIndex(category => category == valueCategory))
+                .Where(category => category >= 0);
+
+            var valueNegCategoryIndexes = valueNegCategories
                 .Select(valueCategory => Categories
                     .FindIndex(category => category == valueCategory))
                 .Where(category => category >= 0);
@@ -85,6 +90,10 @@ namespace exchange_flagged_histogram
                 foreach (var categoryIndex in valueCategoryIndexes)
                 {
                     output.Values[line] += counts[line, categoryIndex];
+                }
+                foreach (var categoryIndex in valueNegCategoryIndexes)
+                {
+                    output.Values[line] -= counts[line, categoryIndex];
                 }
                 var graphError = 0D;
                 output.Graph[line] = "";

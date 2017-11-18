@@ -135,10 +135,20 @@ namespace exchange_flagged_histogram
             if ((config["countCompletedOld"] ?? "False") == "True")
                 countCategories.Add('.');
 
+            var countNegCategories = new List<char>(4);
+            if ((config["countNegFlaggedOld"] ?? "False") == "True")
+                countNegCategories.Add('#');
+            if ((config["countNegFlaggedNew"] ?? "False") == "True")
+                countNegCategories.Add('+');
+            if ((config["countNegCompletedNew"] ?? "False") == "True")
+                countNegCategories.Add('-');
+            if ((config["countNegCompletedOld"] ?? "False") == "True")
+                countNegCategories.Add('.');
+
             var output = new HistogramOutput()
             {
                 BinSize = int.Parse(config["binSize"] ?? "0"),
-                Width = int.Parse(config["width"] ?? "0") - 16,
+                Width = int.Parse(config["width"] ?? "0") - 17,
                 Height = int.Parse(config["height"] ?? "0"),
             };
             if (config["minScale"] != null)
@@ -146,13 +156,13 @@ namespace exchange_flagged_histogram
             if (config["maxScale"] != null)
                 output.MaxScale = double.Parse(config["maxScale"]);
 
-            histogram.RenderTo(output, countCategories);
+            histogram.RenderTo(output, countCategories, countNegCategories);
 
-            Console.WriteLine("Weeks   | Flg | Flagged #/+  Complete -/.");
+            Console.WriteLine("Weeks   |  Num | Flagged #/+  Complete -/.");
             for (var i = 0; i < output.Graph.Length; i++)
             {
-                // Everything before {3} comes to 16 characters, the adjustment used above.
-                Console.WriteLine("{0,3}-{1,3} | {2,3} | {3}",
+                // Everything before {3} comes to 17 characters, the adjustment used above.
+                Console.WriteLine("{0,3}-{1,3} | {2,4} | {3}",
                     output.Base + output.BinSize * i,
                     output.Base + output.BinSize * (i + 1) - 1,
                     output.Values[i],
