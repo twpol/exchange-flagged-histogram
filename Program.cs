@@ -67,7 +67,8 @@ namespace exchange_flagged_histogram
                 categories.Add('.');
 
             // Calculate the age of each not-completed and completed message.
-            var now = DateTime.Now;
+            var now = DateTimeOffset.Now;
+            now = now.AddDays(1 - now.TimeOfDay.TotalDays);
             var histogram = new Histogram(categories);
             var separateFlaggedCompleted = (config["separateFlaggedCompleted"] ?? "False") == "True";
             var countFlagged = 0;
