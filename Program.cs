@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using CLP = CommandLineParser;
@@ -71,6 +71,7 @@ namespace exchange_flagged_histogram
             now = now.AddDays(1 - now.TimeOfDay.TotalDays);
             var histogram = new Histogram(categories);
             var separateFlaggedCompleted = (config["separateFlaggedCompleted"] ?? "False") == "True";
+            var daysPerBin = uint.Parse(config["daysPerBin"] ?? "7");
             var countFlagged = 0;
             var countNewFlagged = 0;
             var countNewComplete = 0;
@@ -85,23 +86,23 @@ namespace exchange_flagged_histogram
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
                     {
                         if (messageAge >= 7)
-                            histogram.Add('#', messageAge / 7);
+                            histogram.Add('#', messageAge / daysPerBin);
                         else
-                            histogram.Add('+', messageAge / 7);
+                            histogram.Add('+', messageAge / daysPerBin);
                     }
                     else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
                     {
                         if (separateFlaggedCompleted)
                         {
                             if (messageAge >= 7)
-                                histogram.Add('#', messageAge / 7);
+                                histogram.Add('#', messageAge / daysPerBin);
                             else
-                                histogram.Add('+', messageAge / 7);
+                                histogram.Add('+', messageAge / daysPerBin);
                         }
                         if (completedAge < 7)
-                            histogram.Add('-', (separateFlaggedCompleted ? completedAge : messageAge) / 7);
+                            histogram.Add('-', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
                         else
-                            histogram.Add('.', (separateFlaggedCompleted ? completedAge : messageAge) / 7);
+                            histogram.Add('.', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
                     }
 
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged || message.Flag.FlagStatus == ItemFlagStatus.Complete)
@@ -160,7 +161,12 @@ namespace exchange_flagged_histogram
 
             histogram.RenderTo(output, countCategories, countNegCategories);
 
-            Console.WriteLine("Weeks   |  Num | Flagged #/+  Complete -/.");
+            if (daysPerBin == 1)
+                Console.WriteLine("Days    |  Num | Flagged #/+  Complete -/.");
+            else if (daysPerBin == 7)
+                Console.WriteLine("Weeks   |  Num | Flagged #/+  Complete -/.");
+            else
+                Console.WriteLine("{0,2} days |  Num | Flagged #/+  Complete -/.", daysPerBin);
             for (var i = 0; i < output.Graph.Length; i++)
             {
                 // Everything before {3} comes to 17 characters, the adjustment used above.
