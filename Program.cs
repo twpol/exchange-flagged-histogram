@@ -191,12 +191,17 @@ namespace exchange_flagged_histogram
                 throw new MissingMemberException("AllItems");
             }
 
-            // Find all items that are flagged.
-            var flaggedFilter = new SearchFilter.Exists(PidTagFlagStatus);
+            // Find the Funk folder.
+            var junkFolder = Folder.Bind(service, WellKnownFolderName.JunkEmail);
+
+            // Find all items that are flagged and not in the Junk folder.
+            var flaggedFilter = new SearchFilter.SearchFilterCollection(LogicalOperator.And) {
+                new SearchFilter.Exists(PidTagFlagStatus),
+                new SearchFilter.IsNotEqualTo(ItemSchema.ParentFolderId, junkFolder.Id.UniqueId),
+            };
             var flaggedView = new ItemView(1000)
             {
                 PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.DateTimeReceived, ItemSchema.Flag),
-                Traversal = ItemTraversal.Shallow,
             };
 
             FindItemsResults<Item> flagged;
