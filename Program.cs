@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using CLP = CommandLineParser;
@@ -187,10 +187,12 @@ namespace exchange_flagged_histogram
             // Find Outlook's own search folder "AllItems", which includes all folders in the account.
             var allItemsView = new FolderView(10);
             var allItems = service.FindFolders(WellKnownFolderName.Root,
-                new SearchFilter.SearchFilterCollection(LogicalOperator.And) {
+                new SearchFilter.SearchFilterCollection(LogicalOperator.And)
+                {
                     new SearchFilter.IsEqualTo(PidTagFolderType, "2"),
                     new SearchFilter.IsEqualTo(FolderSchema.DisplayName, "AllItems"),
-                }, allItemsView);
+                },
+                allItemsView);
 
             if (allItems.Folders.Count != 1)
             {
@@ -201,8 +203,10 @@ namespace exchange_flagged_histogram
             var junkFolder = Folder.Bind(service, WellKnownFolderName.JunkEmail);
 
             // Find all items that are flagged and not in the Junk folder.
-            var flaggedFilter = new SearchFilter.SearchFilterCollection(LogicalOperator.And) {
+            var flaggedFilter = new SearchFilter.SearchFilterCollection(LogicalOperator.And)
+            {
                 new SearchFilter.Exists(PidTagFlagStatus),
+                new SearchFilter.IsEqualTo(ItemSchema.ItemClass, "IPM.Note"),
                 new SearchFilter.IsNotEqualTo(ItemSchema.ParentFolderId, junkFolder.Id.UniqueId),
             };
             var flaggedView = new ItemView(1000)
