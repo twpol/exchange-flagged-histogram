@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using CLP = CommandLineParser;
@@ -119,8 +119,9 @@ namespace exchange_flagged_histogram
                             countNewComplete++;
                     }
                 }
-                catch (ServiceObjectPropertyException)
+                catch (ServiceObjectPropertyException error)
                 {
+                    Console.WriteLine("Error: {0}", error.Message);
                 }
             });
 
