@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using CLP = CommandLineParser;
@@ -122,7 +122,7 @@ namespace exchange_flagged_histogram
                 }
                 catch (ServiceObjectPropertyException error)
                 {
-                    Console.WriteLine("Error: {0}", error.Message);
+                    Console.WriteLine("Error: {0}: {1}", error.PropertyDefinition, error.Message);
                 }
             });
 
