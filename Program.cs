@@ -16,10 +16,13 @@ namespace exchange_flagged_histogram
                 DefaultValue = new FileInfo("config.json")
             };
 
+            var debug = new CLP.Arguments.SwitchArgument('d', "debug", false);
+
             var commandLineParser = new CLP.CommandLineParser()
             {
                 Arguments = {
                     config,
+                    debug,
                 }
             };
 
@@ -29,7 +32,7 @@ namespace exchange_flagged_histogram
 
                 Main(new ConfigurationBuilder()
                     .AddJsonFile(config.Value.FullName, true)
-                    .Build());
+                    .Build(), debug.Value);
             }
             catch (CLP.Exceptions.CommandLineException e)
             {
@@ -37,13 +40,13 @@ namespace exchange_flagged_histogram
             }
         }
 
-        static void Main(IConfigurationRoot config)
+        static void Main(IConfigurationRoot config, bool debug)
         {
             var service = new ExchangeService(ExchangeVersion.Exchange2013);
 
             LogIn(config.GetSection("credentials"), service);
 
-            Histogram(config.GetSection("histogram"), service);
+            Histogram(config.GetSection("histogram"), service, debug);
         }
 
         private static void LogIn(IConfigurationSection config, ExchangeService service)
@@ -54,7 +57,7 @@ namespace exchange_flagged_histogram
             );
         }
 
-        private static void Histogram(IConfigurationSection config, ExchangeService service)
+        private static void Histogram(IConfigurationSection config, ExchangeService service, bool debug)
         {
             var categories = new List<char>(4);
             if ((config["includeFlaggedOld"] ?? "True") == "True")
@@ -76,12 +79,28 @@ namespace exchange_flagged_histogram
             var countNewFlagged = 0;
             var countNewComplete = 0;
 
+            if (debug)
+                Console.WriteLine("Now:      {0}", now.DateTime);
+
             FindFlaggedMessages(service, message =>
             {
                 try
                 {
                     var messageAge = (now - message.DateTimeReceived).TotalDays;
-                    var completedAge = (now - message.Flag.CompleteDate).TotalDays;
+                    var completedAge = (now - message.Flag.CompleteDate).TotalDays - 0.5;
+
+                    if (debug && messageAge < 7)
+                    {
+                        Console.WriteLine(message.Flag.FlagStatus == ItemFlagStatus.Flagged ?
+                            "Received: {0} ({1,3:F1} days ago)  Flag: {2,-8}" :
+                            "Received: {0} ({1,3:F1} days ago)  Flag: {2,-8}  Completed: {3} ({4,3:F1} days ago)",
+                            message.DateTimeReceived,
+                            messageAge,
+                            message.Flag.FlagStatus,
+                            message.Flag.CompleteDate,
+                            completedAge
+                        );
+                    }
 
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
                     {
@@ -127,6 +146,9 @@ namespace exchange_flagged_histogram
             });
 
             Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged} -{countNewComplete} => {countNewFlagged - countNewComplete:+#;-#;0} )");
+
+            if (debug)
+                return;
 
             var countCategories = new List<char>(4);
             if ((config["countFlaggedOld"] ?? "True") == "True")
