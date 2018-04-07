@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using CLP = CommandLineParser;
@@ -74,6 +74,7 @@ namespace exchange_flagged_histogram
             now = now.AddDays(1 - now.TimeOfDay.TotalDays);
             var histogram = new Histogram(categories);
             var separateFlaggedCompleted = (config["separateFlaggedCompleted"] ?? "False") == "True";
+            var runningTotal = (config["runningTotal"] ?? "False") == "True";
             var daysPerBin = uint.Parse(config["daysPerBin"] ?? "7");
             var countFlagged = 0;
             var countNewFlagged = 0;
@@ -88,6 +89,8 @@ namespace exchange_flagged_histogram
                 {
                     var messageAge = (now - message.DateTimeReceived).TotalDays;
                     var completedAge = (now - message.Flag.CompleteDate).TotalDays - 0.5;
+                    if (message.Flag.FlagStatus != ItemFlagStatus.Complete)
+                        completedAge = 0.5;
 
                     if (debug && messageAge < 7)
                     {
@@ -104,24 +107,44 @@ namespace exchange_flagged_histogram
 
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
                     {
-                        if (messageAge >= 7)
-                            histogram.Add('#', messageAge / daysPerBin);
+                        if (runningTotal)
+                        {
+                            if (messageAge >= 7)
+                                histogram.AddRange('#', messageAge / daysPerBin, completedAge / daysPerBin);
+                            else
+                                histogram.AddRange('+', messageAge / daysPerBin, completedAge / daysPerBin);
+                        }
                         else
-                            histogram.Add('+', messageAge / daysPerBin);
-                    }
-                    else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
-                    {
-                        if (separateFlaggedCompleted)
                         {
                             if (messageAge >= 7)
                                 histogram.Add('#', messageAge / daysPerBin);
                             else
                                 histogram.Add('+', messageAge / daysPerBin);
                         }
-                        if (completedAge < 7)
-                            histogram.Add('-', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
+                    }
+                    else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
+                    {
+                        if (runningTotal)
+                        {
+                            if (completedAge < 7)
+                                histogram.AddRange('-', messageAge / daysPerBin, completedAge / daysPerBin);
+                            else
+                                histogram.AddRange('.', messageAge / daysPerBin, completedAge / daysPerBin);
+                        }
                         else
-                            histogram.Add('.', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
+                        {
+                            if (separateFlaggedCompleted)
+                            {
+                                if (messageAge >= 7)
+                                    histogram.Add('#', messageAge / daysPerBin);
+                                else
+                                    histogram.Add('+', messageAge / daysPerBin);
+                            }
+                            if (completedAge < 7)
+                                histogram.Add('-', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
+                            else
+                                histogram.Add('.', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
+                        }
                     }
 
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged || message.Flag.FlagStatus == ItemFlagStatus.Complete)

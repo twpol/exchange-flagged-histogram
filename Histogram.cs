@@ -8,6 +8,7 @@ namespace exchange_flagged_histogram
     {
         List<char> Categories;
         Dictionary<char, List<double>> Values;
+        Dictionary<char, List<Range<double>>> ValueRanges;
 
         public Histogram(List<char> categories)
         {
@@ -15,6 +16,9 @@ namespace exchange_flagged_histogram
             Values = new Dictionary<char, List<double>>();
             foreach (var category in Categories)
                 Values[category] = new List<double>();
+            ValueRanges = new Dictionary<char, List<Range<double>>>();
+            foreach (var category in Categories)
+                ValueRanges[category] = new List<Range<double>>();
         }
 
         public void Add(char category, double value)
@@ -23,10 +27,25 @@ namespace exchange_flagged_histogram
                 values.Add(value);
         }
 
+        public void AddRange(char category, double startValue, double endValue)
+        {
+            if (ValueRanges.TryGetValue(category, out var valueRanges))
+            {
+                if (startValue < endValue)
+                    valueRanges.Add(new Range<double>(startValue, endValue));
+                else
+                    valueRanges.Add(new Range<double>(endValue, startValue));
+            }
+        }
+
         public void RenderTo(HistogramOutput output, List<char> valueCategories, List<char> valueNegCategories)
         {
             var valuesByIndex = Categories
                 .Select(category => Values[category])
+                .ToList();
+
+            var valueRangesByIndex = Categories
+                .Select(category => ValueRanges[category])
                 .ToList();
 
             var valueCategoryIndexes = valueCategories
@@ -48,6 +67,16 @@ namespace exchange_flagged_histogram
                 {
                     minimum = Math.Min(minimum, values[0]);
                     maximum = Math.Max(maximum, values[values.Count - 1]);
+                }
+            }
+            foreach (var valueRanges in ValueRanges.Values)
+            {
+                if (valueRanges.Count > 0)
+                {
+                    minimum = Math.Min(minimum, valueRanges.Min(range => range.Start));
+                    minimum = Math.Min(minimum, valueRanges.Min(range => range.End));
+                    maximum = Math.Max(maximum, valueRanges.Max(range => range.Start));
+                    maximum = Math.Max(maximum, valueRanges.Max(range => range.End));
                 }
             }
 
@@ -78,6 +107,17 @@ namespace exchange_flagged_histogram
                     totalCounts[bin]++;
                     maximumCount = Math.Max(maximumCount, totalCounts[bin]);
                 }
+                for (var valueRangeIndex = 0; valueRangeIndex < valueRangesByIndex[categoryIndex].Count; valueRangeIndex++)
+                {
+                    var binStart = (int)Math.Floor((valueRangesByIndex[categoryIndex][valueRangeIndex].Start - output.Base) / output.BinSize);
+                    var binEnd = (int)Math.Floor((valueRangesByIndex[categoryIndex][valueRangeIndex].End - output.Base) / output.BinSize);
+                    for (var bin = binStart; bin < binEnd; bin++)
+                    {
+                        counts[bin, categoryIndex]++;
+                        totalCounts[bin]++;
+                        maximumCount = Math.Max(maximumCount, totalCounts[bin]);
+                    }
+                }
             }
 
             output.Scale = Math.Max(Math.Min((double)output.Width / maximumCount, output.MaxScale), output.MinScale);
@@ -105,6 +145,18 @@ namespace exchange_flagged_histogram
                     output.Graph[line] += new String(Categories[categoryIndex], sizeRound);
                 }
             }
+        }
+    }
+
+    class Range<T>
+    {
+        public readonly T Start;
+        public readonly T End;
+
+        public Range(T start, T end)
+        {
+            Start = start;
+            End = end;
         }
     }
 
