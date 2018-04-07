@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using CLP = CommandLineParser;
@@ -30,7 +30,7 @@ namespace exchange_flagged_histogram
             {
                 commandLineParser.ParseCommandLine(args);
 
-                Main(new ConfigurationBuilder()
+                InnerMain(new ConfigurationBuilder()
                     .AddJsonFile(config.Value.FullName, true)
                     .Build(), debug.Value);
             }
@@ -40,7 +40,7 @@ namespace exchange_flagged_histogram
             }
         }
 
-        static void Main(IConfigurationRoot config, bool debug)
+        static void InnerMain(IConfigurationRoot config, bool debug)
         {
             var service = new ExchangeService(ExchangeVersion.Exchange2013);
 
