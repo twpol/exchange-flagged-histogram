@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using CLP = CommandLineParser;
 using Microsoft.Exchange.WebServices.Data;
 using Microsoft.Extensions.Configuration;
@@ -59,20 +60,25 @@ namespace exchange_flagged_histogram
 
         private static void Histogram(IConfigurationSection config, ExchangeService service, bool debug)
         {
+            var charFlaggedOld = (config["charFlaggedOld"] ?? "#")[0];
+            var charFlaggedNew = (config["charFlaggedNew"] ?? "+")[0];
+            var charCompletedNew = (config["charCompletedNew"] ?? "-")[0];
+            var charCompletedOld = (config["charCompletedOld"] ?? ".")[0];
+
             var categories = new List<char>(4);
             if ((config["includeFlaggedOld"] ?? "True") == "True")
-                categories.Add('#');
+                categories.Add(charFlaggedOld);
             if ((config["includeFlaggedNew"] ?? "True") == "True")
-                categories.Add('+');
+                categories.Add(charFlaggedNew);
             if ((config["includeCompletedNew"] ?? "True") == "True")
-                categories.Add('-');
+                categories.Add(charCompletedNew);
             if ((config["includeCompletedOld"] ?? "True") == "True")
-                categories.Add('.');
+                categories.Add(charCompletedOld);
 
             // Calculate the age of each not-completed and completed message.
             var now = DateTimeOffset.Now;
             now = now.AddDays(1 - now.TimeOfDay.TotalDays);
-            var histogram = new Histogram(categories);
+            var histogram = new Histogram(categories.Distinct().ToList());
             var separateFlaggedCompleted = (config["separateFlaggedCompleted"] ?? "False") == "True";
             var runningTotal = (config["runningTotal"] ?? "False") == "True";
             var daysPerBin = uint.Parse(config["daysPerBin"] ?? "7");
@@ -110,16 +116,16 @@ namespace exchange_flagged_histogram
                         if (runningTotal)
                         {
                             if (messageAge >= 7)
-                                histogram.AddRange('#', messageAge / daysPerBin, completedAge / daysPerBin);
+                                histogram.AddRange(charFlaggedOld, messageAge / daysPerBin, completedAge / daysPerBin);
                             else
-                                histogram.AddRange('+', messageAge / daysPerBin, completedAge / daysPerBin);
+                                histogram.AddRange(charFlaggedNew, messageAge / daysPerBin, completedAge / daysPerBin);
                         }
                         else
                         {
                             if (messageAge >= 7)
-                                histogram.Add('#', messageAge / daysPerBin);
+                                histogram.Add(charFlaggedOld, messageAge / daysPerBin);
                             else
-                                histogram.Add('+', messageAge / daysPerBin);
+                                histogram.Add(charFlaggedNew, messageAge / daysPerBin);
                         }
                     }
                     else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
@@ -127,23 +133,23 @@ namespace exchange_flagged_histogram
                         if (runningTotal)
                         {
                             if (completedAge < 7)
-                                histogram.AddRange('-', messageAge / daysPerBin, completedAge / daysPerBin);
+                                histogram.AddRange(charCompletedNew, messageAge / daysPerBin, completedAge / daysPerBin);
                             else
-                                histogram.AddRange('.', messageAge / daysPerBin, completedAge / daysPerBin);
+                                histogram.AddRange(charCompletedOld, messageAge / daysPerBin, completedAge / daysPerBin);
                         }
                         else
                         {
                             if (separateFlaggedCompleted)
                             {
                                 if (messageAge >= 7)
-                                    histogram.Add('#', messageAge / daysPerBin);
+                                    histogram.Add(charFlaggedOld, messageAge / daysPerBin);
                                 else
-                                    histogram.Add('+', messageAge / daysPerBin);
+                                    histogram.Add(charFlaggedNew, messageAge / daysPerBin);
                             }
                             if (completedAge < 7)
-                                histogram.Add('-', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
+                                histogram.Add(charCompletedNew, (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
                             else
-                                histogram.Add('.', (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
+                                histogram.Add(charCompletedOld, (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
                         }
                     }
 
@@ -175,23 +181,23 @@ namespace exchange_flagged_histogram
 
             var countCategories = new List<char>(4);
             if ((config["countFlaggedOld"] ?? "True") == "True")
-                countCategories.Add('#');
+                countCategories.Add(charFlaggedOld);
             if ((config["countFlaggedNew"] ?? "True") == "True")
-                countCategories.Add('+');
+                countCategories.Add(charFlaggedNew);
             if ((config["countCompletedNew"] ?? "False") == "True")
-                countCategories.Add('-');
+                countCategories.Add(charCompletedNew);
             if ((config["countCompletedOld"] ?? "False") == "True")
-                countCategories.Add('.');
+                countCategories.Add(charCompletedOld);
 
             var countNegCategories = new List<char>(4);
             if ((config["countNegFlaggedOld"] ?? "False") == "True")
-                countNegCategories.Add('#');
+                countNegCategories.Add(charFlaggedOld);
             if ((config["countNegFlaggedNew"] ?? "False") == "True")
-                countNegCategories.Add('+');
+                countNegCategories.Add(charFlaggedNew);
             if ((config["countNegCompletedNew"] ?? "False") == "True")
-                countNegCategories.Add('-');
+                countNegCategories.Add(charCompletedNew);
             if ((config["countNegCompletedOld"] ?? "False") == "True")
-                countNegCategories.Add('.');
+                countNegCategories.Add(charCompletedOld);
 
             var output = new HistogramOutput()
             {
@@ -204,7 +210,7 @@ namespace exchange_flagged_histogram
             if (config["maxScale"] != null)
                 output.MaxScale = double.Parse(config["maxScale"]);
 
-            histogram.RenderTo(output, countCategories, countNegCategories);
+            histogram.RenderTo(output, countCategories.Distinct().ToList(), countNegCategories.Distinct().ToList());
 
             if (daysPerBin == 1)
                 Console.WriteLine("Days    |  Num | Flagged #/+  Complete -/.");
