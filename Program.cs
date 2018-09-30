@@ -82,6 +82,7 @@ namespace exchange_flagged_histogram
             var separateFlaggedCompleted = (config["separateFlaggedCompleted"] ?? "False") == "True";
             var runningTotal = (config["runningTotal"] ?? "False") == "True";
             var daysForRecent = uint.Parse(config["daysForRecent"] ?? "7");
+            var daysForRecentScale = float.Parse(config["daysForRecentScale"] ?? "1");
             var daysPerBin = uint.Parse(config["daysPerBin"] ?? "7");
             var countFlagged = 0;
             var countNewFlagged = 0;
@@ -175,7 +176,10 @@ namespace exchange_flagged_histogram
                 }
             });
 
-            Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged} -{countNewComplete} => {countNewFlagged - countNewComplete:+#;-#;0} )");
+            if (Math.Abs(daysForRecentScale - 1) < 0.01)
+                Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged} -{countNewComplete} => {countNewFlagged - countNewComplete:+#;-#;0} )");
+            else
+                Console.WriteLine($"Flagged:  {countFlagged,3} ( +{countNewFlagged * daysForRecentScale:F1} -{countNewComplete * daysForRecentScale:F1} => {(countNewFlagged - countNewComplete) * daysForRecentScale:+0.0;-0.0;0.0} )");
 
             if (debug)
                 return;
