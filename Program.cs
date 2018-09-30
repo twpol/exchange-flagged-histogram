@@ -81,6 +81,7 @@ namespace exchange_flagged_histogram
             var histogram = new Histogram(categories.Distinct().ToList());
             var separateFlaggedCompleted = (config["separateFlaggedCompleted"] ?? "False") == "True";
             var runningTotal = (config["runningTotal"] ?? "False") == "True";
+            var daysForRecent = uint.Parse(config["daysForRecent"] ?? "7");
             var daysPerBin = uint.Parse(config["daysPerBin"] ?? "7");
             var countFlagged = 0;
             var countNewFlagged = 0;
@@ -98,7 +99,7 @@ namespace exchange_flagged_histogram
                     if (message.Flag.FlagStatus != ItemFlagStatus.Complete)
                         completedAge = 0.5;
 
-                    if (debug && messageAge < 7)
+                    if (debug && messageAge < daysForRecent)
                     {
                         Console.WriteLine(message.Flag.FlagStatus == ItemFlagStatus.Flagged ?
                             "Received: {0} ({1,3:F1} days ago)  Flag: {2,-8}" :
@@ -115,14 +116,14 @@ namespace exchange_flagged_histogram
                     {
                         if (runningTotal)
                         {
-                            if (messageAge >= 7)
+                            if (messageAge >= daysForRecent)
                                 histogram.AddRange(charFlaggedOld, messageAge / daysPerBin, completedAge / daysPerBin);
                             else
                                 histogram.AddRange(charFlaggedNew, messageAge / daysPerBin, completedAge / daysPerBin);
                         }
                         else
                         {
-                            if (messageAge >= 7)
+                            if (messageAge >= daysForRecent)
                                 histogram.Add(charFlaggedOld, messageAge / daysPerBin);
                             else
                                 histogram.Add(charFlaggedNew, messageAge / daysPerBin);
@@ -132,7 +133,7 @@ namespace exchange_flagged_histogram
                     {
                         if (runningTotal)
                         {
-                            if (completedAge < 7)
+                            if (completedAge < daysForRecent)
                                 histogram.AddRange(charCompletedNew, messageAge / daysPerBin, completedAge / daysPerBin);
                             else
                                 histogram.AddRange(charCompletedOld, messageAge / daysPerBin, completedAge / daysPerBin);
@@ -141,12 +142,12 @@ namespace exchange_flagged_histogram
                         {
                             if (separateFlaggedCompleted)
                             {
-                                if (messageAge >= 7)
+                                if (messageAge >= daysForRecent)
                                     histogram.Add(charFlaggedOld, messageAge / daysPerBin);
                                 else
                                     histogram.Add(charFlaggedNew, messageAge / daysPerBin);
                             }
-                            if (completedAge < 7)
+                            if (completedAge < daysForRecent)
                                 histogram.Add(charCompletedNew, (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
                             else
                                 histogram.Add(charCompletedOld, (separateFlaggedCompleted ? completedAge : messageAge) / daysPerBin);
@@ -155,7 +156,7 @@ namespace exchange_flagged_histogram
 
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged || message.Flag.FlagStatus == ItemFlagStatus.Complete)
                     {
-                        if (messageAge < 7)
+                        if (messageAge < daysForRecent)
                             countNewFlagged++;
                     }
                     if (message.Flag.FlagStatus == ItemFlagStatus.Flagged)
@@ -164,7 +165,7 @@ namespace exchange_flagged_histogram
                     }
                     else if (message.Flag.FlagStatus == ItemFlagStatus.Complete)
                     {
-                        if (completedAge < 7)
+                        if (completedAge < daysForRecent)
                             countNewComplete++;
                     }
                 }
