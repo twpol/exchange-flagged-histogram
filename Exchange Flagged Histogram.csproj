@@ -4,7 +4,7 @@
     <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
-    <PackageReference Include="CommandLineArgumentsParser" Version="3.0.19" />
+    <PackageReference Include="CommandLineArgumentsParser" Version="3.0.20" />
     <PackageReference Include="Microsoft.Exchange.WebServices" Version="2.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.2.0" />
